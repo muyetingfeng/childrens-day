@@ -1227,6 +1227,7 @@ const $storyContainer = document.getElementById('storyContainer');
 const $storyEnterBtn = document.getElementById('storyEnterBtn');
 const $storySkip = document.getElementById('storySkip');
 const $storyDots = document.getElementById('storyDots');
+const $storyBackBtn = document.getElementById('storyBackBtn');
 const scenes = Array.from(document.querySelectorAll('.story-scene'));
 let currentScene = 0;
 
@@ -1239,8 +1240,8 @@ function showScene(i) {
   currentScene = i;
   updateDots();
   $storySkip.textContent = i >= 4 ? '' : '点击屏幕继续 →';
-  $storyBackBtn.classList.toggle('visible', i > 0);
-  startSceneAudio(i);
+  if ($storyBackBtn) $storyBackBtn.classList.toggle('visible', i > 0);
+  try { startSceneAudio(i); } catch(e) {}
 }
 
 // ── Scene-specific Audio ──
@@ -1248,10 +1249,11 @@ let currentAudioTimer = null;
 let currentSpeech = null;
 
 function stopAllAudio() {
-  if (currentAudioTimer) { clearInterval(currentAudioTimer); currentAudioTimer = null; }
-  if (currentSpeech) { speechSynthesis.cancel(); currentSpeech = null; }
-  // Stop any playing <audio> elements
-  document.querySelectorAll('.scene-audio').forEach(a => { a.pause(); a.currentTime = 0; });
+  try {
+    if (currentAudioTimer) { clearInterval(currentAudioTimer); currentAudioTimer = null; }
+    if (currentSpeech) { speechSynthesis.cancel(); currentSpeech = null; }
+    document.querySelectorAll('.scene-audio').forEach(a => { a.pause(); a.currentTime = 0; });
+  } catch(e) {}
 }
 
 function playAlarmLoop() {
@@ -1312,7 +1314,6 @@ $storyContainer.addEventListener('click', (e) => {
 });
 
 // Back button
-$storyBackBtn = document.getElementById('storyBackBtn');
 $storyBackBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   if (currentScene > 0) showScene(currentScene - 1);
