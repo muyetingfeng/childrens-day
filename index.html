@@ -1222,113 +1222,103 @@ body {
 // ══════════════════════════════════════════
 // STORY INTRO
 // ══════════════════════════════════════════
+(function() {
 const $storyOverlay = document.getElementById('storyOverlay');
 const $storyContainer = document.getElementById('storyContainer');
 const $storyEnterBtn = document.getElementById('storyEnterBtn');
 const $storySkip = document.getElementById('storySkip');
 const $storyDots = document.getElementById('storyDots');
 const $storyBackBtn = document.getElementById('storyBackBtn');
-const scenes = Array.from(document.querySelectorAll('.story-scene'));
+const scenes = document.querySelectorAll('.story-scene');
 let currentScene = 0;
+let currentAudioTimer = null;
+
+if (!$storyContainer || scenes.length === 0) return; // safety
 
 function updateDots() {
-  Array.from($storyDots.children).forEach((d, i) => d.classList.toggle('active', i === currentScene));
-}
-function showScene(i) {
-  scenes.forEach(s => s.classList.remove('active'));
-  scenes[i].classList.add('active');
-  currentScene = i;
-  updateDots();
-  $storySkip.textContent = i >= 4 ? '' : '点击屏幕继续 →';
-  if ($storyBackBtn) $storyBackBtn.classList.toggle('visible', i > 0);
-  try { startSceneAudio(i); } catch(e) {}
+  if (!$storyDots) return;
+  Array.from($storyDots.children).forEach(function(d, i) { d.classList.toggle('active', i === currentScene); });
 }
 
-// ── Scene-specific Audio ──
-let currentAudioTimer = null;
-let currentSpeech = null;
-
-function stopAllAudio() {
+function stopAudio() {
   try {
     if (currentAudioTimer) { clearInterval(currentAudioTimer); currentAudioTimer = null; }
-    if (currentSpeech) { speechSynthesis.cancel(); currentSpeech = null; }
-    document.querySelectorAll('.scene-audio').forEach(a => { a.pause(); a.currentTime = 0; });
+    document.querySelectorAll('.scene-audio').forEach(function(a) { a.pause(); a.currentTime = 0; });
   } catch(e) {}
 }
 
-function playAlarmLoop() {
-  stopAllAudio();
-  let beep = 0;
-  function tick() {
-    // 3 rapid beeps, pause, repeat (like an alarm clock)
-    if (beep % 4 < 3) { playNote(880, 0.1, 0, 'square', 0.06); }
-    currentAudioTimer = setTimeout(tick, beep % 4 === 2 ? 500 : 200);
-    beep++;
-  }
-  tick();
+function playAudio(sceneIdx) {
+  stopAudio();
+  try {
+    if (sceneIdx === 0) {
+      // Alarm beeps
+      var beep = 0;
+      function tick() {
+        if (beep % 4 < 3 && typeof playNote === 'function') { playNote(880, 0.1, 0, 'square', 0.06); }
+        currentAudioTimer = setTimeout(tick, beep % 4 === 2 ? 500 : 200);
+        beep++;
+      }
+      tick();
+    } else if (sceneIdx === 1) {
+      var a2 = document.getElementById('audioScene2');
+      if (a2) { a2.currentTime = 0; a2.play().catch(function(){}); }
+    } else if (sceneIdx === 2 || sceneIdx === 4) {
+      if (typeof playNote === 'function') {
+        var melody = [[523,0.3],[659,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.3],[784,0.4],[1047,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.4],[784,0.3],[1047,0.3],[784,0.3],[659,0.6]];
+        var idx = 0;
+        function next() { var m = melody[idx % melody.length]; playNote(m[0],m[1],0,'triangle',0.04); idx++; }
+        next();
+        currentAudioTimer = setInterval(next, 1000);
+      }
+    } else if (sceneIdx === 3) {
+      if (typeof playNote === 'function') {
+        [1047,1319,1568].forEach(function(f,i) { playNote(f,0.2,i*0.12,'sine',0.04); });
+      }
+      setTimeout(function() {
+        var a4 = document.getElementById('audioScene4');
+        if (a4) { a4.currentTime = 0; a4.play().catch(function(){}); }
+      }, 500);
+    }
+  } catch(e) {}
 }
 
-function playTeacherVoice() {
-  stopAllAudio();
-  const audio = document.getElementById('audioScene2');
-  if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
+function showScene(i) {
+  for (var s = 0; s < scenes.length; s++) { scenes[s].classList.remove('active'); }
+  if (scenes[i]) scenes[i].classList.add('active');
+  currentScene = i;
+  updateDots();
+  if ($storySkip) $storySkip.textContent = i >= 4 ? '' : '点击屏幕继续 →';
+  if ($storyBackBtn) $storyBackBtn.classList.toggle('visible', i > 0);
+  playAudio(i);
 }
 
-function playDreamyMelody() {
-  stopAllAudio();
-  const melody = [[523,0.3],[659,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.3],[784,0.4],[1047,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.4],[784,0.3],[1047,0.3],[784,0.3],[659,0.6]];
-  let idx = 0;
-  function next() { const [f,d] = melody[idx % melody.length]; playNote(f,d,0,'triangle',0.04); idx++; }
-  next();
-  currentAudioTimer = setInterval(next, 1000);
-}
-
-function playShopkeeperVoice() {
-  stopAllAudio();
-  // Brief magical sparkle first
-  [1047,1319,1568].forEach((f,i) => playNote(f,0.2,i*0.12,'sine',0.04));
-  setTimeout(() => {
-    const audio = document.getElementById('audioScene4');
-    if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
-  }, 500);
-}
-
-function startSceneAudio(sceneIdx) {
-  switch(sceneIdx) {
-    case 0: playAlarmLoop(); break;           // 闹钟声
-    case 1: playTeacherVoice(); break;         // 老师讲课
-    case 2: playDreamyMelody(); break;         // 梦幻旋律
-    case 3: playShopkeeperVoice(); break;      // 神秘店主
-    case 4: playDreamyMelody(); break;         // 梦幻旋律
-  }
-}
-
-$storyContainer.addEventListener('click', function onceAudio() {
-  try { startSceneAudio(0); } catch(e) {}
-}, { once: true });
-
-$storyContainer.addEventListener('click', (e) => {
-  if (e.target === $storyEnterBtn || e.target.closest('.story-enter-btn')) return;
-  if (e.target === $storyBackBtn || e.target.closest('.story-back-btn')) return;
+// Click to advance
+$storyContainer.addEventListener('click', function(e) {
+  if (e.target === $storyEnterBtn || (e.target && e.target.closest && e.target.closest('.story-enter-btn'))) return;
+  if ($storyBackBtn && (e.target === $storyBackBtn || (e.target && e.target.closest && e.target.closest('.story-back-btn')))) return;
   if (currentScene < 4) showScene(currentScene + 1);
 });
 
 // Back button
 if ($storyBackBtn) {
-  $storyBackBtn.addEventListener('click', (e) => {
+  $storyBackBtn.addEventListener('click', function(e) {
     e.stopPropagation();
     if (currentScene > 0) showScene(currentScene - 1);
   });
 }
 
-$storyEnterBtn.addEventListener('click', (e) => { e.stopPropagation(); stopAllAudio(); enterMain(); });
+// Enter button
+if ($storyEnterBtn) {
+  $storyEnterBtn.addEventListener('click', function(e) { e.stopPropagation(); stopAudio(); enterMain(); });
+}
 
-document.addEventListener('keydown', function storyNav(e) {
-  if ($storyOverlay.classList.contains('hidden')) return;
+// Keyboard nav
+document.addEventListener('keydown', function(e) {
+  if (!$storyOverlay || $storyOverlay.classList.contains('hidden')) return;
   if (e.key === 'ArrowRight' || e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
     e.preventDefault();
     if (currentScene < 4) showScene(currentScene + 1);
-    else { stopAllAudio(); enterMain(); }
+    else { stopAudio(); enterMain(); }
   }
   if (e.key === 'ArrowLeft') {
     e.preventDefault();
@@ -1336,16 +1326,20 @@ document.addEventListener('keydown', function storyNav(e) {
   }
 });
 
-// Touch swipe: up = next, down = back
-let touchStartY = 0;
-$storyContainer.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; });
-$storyContainer.addEventListener('touchend', (e) => {
-  const dy = touchStartY - e.changedTouches[0].clientY;
+// Touch swipe
+var touchY = 0;
+$storyContainer.addEventListener('touchstart', function(e) { touchY = e.touches[0].clientY; });
+$storyContainer.addEventListener('touchend', function(e) {
+  var dy = touchY - e.changedTouches[0].clientY;
   if (Math.abs(dy) > 40) {
     if (dy > 0 && currentScene < 4) showScene(currentScene + 1);
     else if (dy < 0 && currentScene > 0) showScene(currentScene - 1);
   }
 });
+
+// expose enterMain ref for keyboard nav
+window._storyEnterMain = function() { stopAudio(); enterMain(); };
+})();
 
 function enterMain() {
   stopAllAudio();
