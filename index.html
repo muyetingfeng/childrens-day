@@ -1092,7 +1092,7 @@ body {
         <span class="bubble-emoji">🎁</span>
         <span class="bubble-text">「来抽个奖吧——」<br>「命运决定你的六一礼物。」<br>「你有<strong>两次机会</strong>，<br>看看能抽到什么？」</span>
       </div>
-      <button class="story-enter-btn" id="storyEnterBtn">✨ 开始抽奖 ✨</button>
+      <button class="story-enter-btn" id="storyEnterBtn" onclick="event.stopPropagation();var o=document.getElementById('storyOverlay');o.classList.add('hidden');setTimeout(function(){if(!window._mainReady){if(typeof initMain==='function')initMain();window._mainReady=1;if(typeof sendDanmaku==='function'){setTimeout(function(){sendDanmaku('🎈 欢迎来到童心礼物商店！')},200);setTimeout(function(){sendDanmaku('🐴 每个大人心里都住着一个小孩~')},700);setTimeout(function(){sendDanmaku('💬 在底部发送你的六一祝福弹幕吧！')},1200)}}},300)">✨ 开始抽奖 ✨</button>
       <p class="story-skip" id="storySkip">点击屏幕继续 →</p>
     </div>
   </div>
