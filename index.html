@@ -1002,7 +1002,7 @@ body {
 
 <!-- ═══════════════ STORY INTRO ═══════════════ -->
 <div class="story-overlay" id="storyOverlay">
-  <div class="story-container" id="storyContainer">
+  <div class="story-container" id="storyContainer" onclick="var c=this._sc||0;if(c<4){var s=this.querySelectorAll('.story-scene');for(var i=0;i<s.length;i++)s[i].classList.remove('active');if(s[c+1])s[c+1].classList.add('active');this._sc=c+1;var d=this.querySelector('#storyDots');if(d)for(var j=0;j<d.children.length;j++)d.children[j].classList.toggle('active',j===c+1);var sk=this.querySelector('#storySkip');if(sk)sk.textContent=c+1>=4?'':'点击屏幕继续 →';var bk=this.querySelector('#storyBackBtn');if(bk)bk.style.visibility=c+1>0?'visible':'hidden'}">
     <button class="story-back-btn" id="storyBackBtn" title="上一页">◀</button>
     <div class="story-dots" id="storyDots">
       <span class="story-dot active"></span>
@@ -1286,18 +1286,15 @@ function showScene(i) {
   for (var s = 0; s < scenes.length; s++) { scenes[s].classList.remove('active'); }
   if (scenes[i]) scenes[i].classList.add('active');
   currentScene = i;
+  $storyContainer._sc = i; // sync with inline onclick
   updateDots();
   if ($storySkip) $storySkip.textContent = i >= 4 ? '' : '点击屏幕继续 →';
   if ($storyBackBtn) $storyBackBtn.classList.toggle('visible', i > 0);
   playAudio(i);
 }
 
-// Click to advance
-$storyContainer.addEventListener('click', function(e) {
-  if (e.target === $storyEnterBtn || (e.target && e.target.closest && e.target.closest('.story-enter-btn'))) return;
-  if ($storyBackBtn && (e.target === $storyBackBtn || (e.target && e.target.closest && e.target.closest('.story-back-btn')))) return;
-  if (currentScene < 4) showScene(currentScene + 1);
-});
+// Click to advance handled by inline onclick on storyContainer (belt and suspenders)
+// Sync JS scene state with inline _sc when showScene is called by back button or keyboard
 
 // Back button
 if ($storyBackBtn) {
@@ -1337,7 +1334,14 @@ $storyContainer.addEventListener('touchend', function(e) {
   }
 });
 
-// expose enterMain ref for keyboard nav
+// expose for inline onclick (belt and suspenders)
+window._storyClick = function(e) {
+  e = e || window.event;
+  var target = e.target || e.srcElement;
+  if (target === $storyEnterBtn || (target.closest && target.closest('.story-enter-btn'))) return;
+  if ($storyBackBtn && (target === $storyBackBtn || (target.closest && target.closest('.story-back-btn')))) return;
+  if (currentScene < 4) showScene(currentScene + 1);
+};
 window._storyEnterMain = function() { stopAudio(); enterMain(); };
 })();
 
