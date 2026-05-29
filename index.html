@@ -1182,20 +1182,76 @@ function showScene(i) {
   updateDots();
   $storySkip.textContent = i >= 4 ? '' : '点击屏幕继续 →';
   $storyBackBtn.classList.toggle('visible', i > 0);
+  startSceneAudio(i);
 }
 
-// BGM
-let storyBgmInterval = null;
-function startStoryBgm() {
-  if (storyBgmInterval) return;
-  const m = [[523,0.3],[659,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.3],[784,0.4],[1047,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.4],[784,0.3],[1047,0.3],[784,0.3],[659,0.6]];
-  let i = 0;
-  function next() { const [f,d] = m[i % m.length]; playNote(f,d,0,'triangle',0.04); i++; }
-  next(); storyBgmInterval = setInterval(next, 1000);
-}
-function stopStoryBgm() { if (storyBgmInterval) { clearInterval(storyBgmInterval); storyBgmInterval = null; } }
+// ── Scene-specific Audio ──
+let currentAudioTimer = null;
+let currentSpeech = null;
 
-$storyContainer.addEventListener('click', function onceBgm() { startStoryBgm(); }, { once: true });
+function stopAllAudio() {
+  if (currentAudioTimer) { clearInterval(currentAudioTimer); currentAudioTimer = null; }
+  if (currentSpeech) { speechSynthesis.cancel(); currentSpeech = null; }
+}
+
+function playAlarmLoop() {
+  stopAllAudio();
+  let beep = 0;
+  function tick() {
+    // 3 rapid beeps, pause, repeat (like an alarm clock)
+    if (beep % 4 < 3) { playNote(880, 0.1, 0, 'square', 0.06); }
+    currentAudioTimer = setTimeout(tick, beep % 4 === 2 ? 500 : 200);
+    beep++;
+  }
+  tick();
+}
+
+function playTeacherVoice() {
+  stopAllAudio();
+  try {
+    const u = new SpeechSynthesisUtterance('信息组织就是……嗯……这个知识点……期末考试的重点……');
+    u.lang = 'zh-CN'; u.rate = 0.75; u.pitch = 0.85; u.volume = 0.5;
+    currentSpeech = u;
+    u.onend = () => { currentSpeech = null; };
+    speechSynthesis.speak(u);
+  } catch(e) { /* speech not supported */ }
+}
+
+function playDreamyMelody() {
+  stopAllAudio();
+  const melody = [[523,0.3],[659,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.3],[784,0.4],[1047,0.3],[784,0.3],[659,0.3],[523,0.3],[659,0.4],[784,0.3],[1047,0.3],[784,0.3],[659,0.6]];
+  let idx = 0;
+  function next() { const [f,d] = melody[idx % melody.length]; playNote(f,d,0,'triangle',0.04); idx++; }
+  next();
+  currentAudioTimer = setInterval(next, 1000);
+}
+
+function playShopkeeperVoice() {
+  stopAllAudio();
+  // Brief magical sparkle first
+  [1047,1319,1568].forEach((f,i) => playNote(f,0.2,i*0.12,'sine',0.04));
+  try {
+    const u = new SpeechSynthesisUtterance('我知道你已经很多年没过六一了，但心里住着孩子的人，永远有资格收到礼物。');
+    u.lang = 'zh-CN'; u.rate = 0.8; u.pitch = 0.7; u.volume = 0.55;
+    currentSpeech = u;
+    u.onend = () => { currentSpeech = null; };
+    setTimeout(() => speechSynthesis.speak(u), 500);
+  } catch(e) {}
+}
+
+function startSceneAudio(sceneIdx) {
+  switch(sceneIdx) {
+    case 0: playAlarmLoop(); break;           // 闹钟声
+    case 1: playTeacherVoice(); break;         // 老师讲课
+    case 2: playDreamyMelody(); break;         // 梦幻旋律
+    case 3: playShopkeeperVoice(); break;      // 神秘店主
+    case 4: playDreamyMelody(); break;         // 梦幻旋律
+  }
+}
+
+$storyContainer.addEventListener('click', function onceAudio() {
+  startSceneAudio(0);
+}, { once: true });
 
 $storyContainer.addEventListener('click', (e) => {
   if (e.target === $storyEnterBtn || e.target.closest('.story-enter-btn')) return;
@@ -1210,14 +1266,14 @@ $storyBackBtn.addEventListener('click', (e) => {
   if (currentScene > 0) showScene(currentScene - 1);
 });
 
-$storyEnterBtn.addEventListener('click', (e) => { e.stopPropagation(); stopStoryBgm(); enterMain(); });
+$storyEnterBtn.addEventListener('click', (e) => { e.stopPropagation(); stopAllAudio(); enterMain(); });
 
 document.addEventListener('keydown', function storyNav(e) {
   if ($storyOverlay.classList.contains('hidden')) return;
   if (e.key === 'ArrowRight' || e.key === ' ' || e.code === 'Space' || e.key === 'Enter') {
     e.preventDefault();
     if (currentScene < 4) showScene(currentScene + 1);
-    else { stopStoryBgm(); enterMain(); }
+    else { stopAllAudio(); enterMain(); }
   }
   if (e.key === 'ArrowLeft') {
     e.preventDefault();
@@ -1237,7 +1293,7 @@ $storyContainer.addEventListener('touchend', (e) => {
 });
 
 function enterMain() {
-  stopStoryBgm();
+  stopAllAudio();
   $storyOverlay.classList.add('hidden');
   setTimeout(() => {
     if (!initialized) initMain();
