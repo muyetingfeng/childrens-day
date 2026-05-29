@@ -1304,7 +1304,7 @@ function startSceneAudio(sceneIdx) {
 }
 
 $storyContainer.addEventListener('click', function onceAudio() {
-  startSceneAudio(0);
+  try { startSceneAudio(0); } catch(e) {}
 }, { once: true });
 
 $storyContainer.addEventListener('click', (e) => {
@@ -1314,10 +1314,12 @@ $storyContainer.addEventListener('click', (e) => {
 });
 
 // Back button
-$storyBackBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (currentScene > 0) showScene(currentScene - 1);
-});
+if ($storyBackBtn) {
+  $storyBackBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (currentScene > 0) showScene(currentScene - 1);
+  });
+}
 
 $storyEnterBtn.addEventListener('click', (e) => { e.stopPropagation(); stopAllAudio(); enterMain(); });
 
