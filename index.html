@@ -1002,7 +1002,7 @@ body {
 
 <!-- ═══════════════ STORY INTRO ═══════════════ -->
 <div class="story-overlay" id="storyOverlay">
-  <div class="story-container" id="storyContainer" onclick="var c=this._sc||0;if(c<4){var s=this.querySelectorAll('.story-scene');for(var i=0;i<s.length;i++)s[i].classList.remove('active');if(s[c+1])s[c+1].classList.add('active');this._sc=c+1;var d=this.querySelector('#storyDots');if(d)for(var j=0;j<d.children.length;j++)d.children[j].classList.toggle('active',j===c+1);var sk=this.querySelector('#storySkip');if(sk)sk.textContent=c+1>=4?'':'点击屏幕继续 →';var bk=this.querySelector('#storyBackBtn');if(bk)bk.style.visibility=c+1>0?'visible':'hidden'}">
+  <div class="story-container" id="storyContainer" onclick="var c=this._sc||0;if(c&lt;4){var s=this.querySelectorAll('.story-scene');for(var i=0;i&lt;s.length;i++)s[i].classList.remove('active');if(s[c+1])s[c+1].classList.add('active');this._sc=c+1;var d=this.querySelector('#storyDots');if(d)for(var j=0;j&lt;d.children.length;j++)d.children[j].classList.toggle('active',j===c+1);var sk=this.querySelector('#storySkip');if(sk)sk.textContent=c+1&gt;=4?'':'点击屏幕继续 →';var bk=this.querySelector('#storyBackBtn');if(bk)bk.style.visibility=c+1&gt;0?'visible':'hidden'}">
     <button class="story-back-btn" id="storyBackBtn" title="上一页">◀</button>
     <div class="story-dots" id="storyDots">
       <span class="story-dot active"></span>
