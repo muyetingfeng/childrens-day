@@ -1611,8 +1611,8 @@ function openGift() {
       isAnimating = false;
       if (drawCount === 1) {
         $postDrawPrompt.style.display = '';
-        $postDrawPrompt.innerHTML = '🎀 还有<strong>一次</strong>抽奖机会哦！<br>点击礼物盒继续抽取吧～';
-        resetBox();
+        $postDrawPrompt.innerHTML = '🎀 还有<strong>一次</strong>抽奖机会哦！<br><button class="btn btn-primary" id="btnDrawAgain" style="margin-top:10px;">🎲 再抽一次</button>';
+        // Keep card visible, don't reset box
       } else if (drawCount === 2) {
         $postDrawPrompt.style.display = '';
         $postDrawPrompt.innerHTML = '💌 两次抽奖都用完啦！<br><strong>写下你对大家的六一祝福叭！！</strong>';
@@ -1645,9 +1645,18 @@ function bindEvents() {
     }
   });
 
+  // Delegated: "再抽一次" button (dynamically created after first draw)
+  $postDrawPrompt.addEventListener('click', (e) => {
+    if (e.target.id === 'btnDrawAgain' || e.target.closest('#btnDrawAgain')) {
+      $postDrawPrompt.style.display = 'none';
+      resetBox();
+    }
+  });
+
   // Buttons
   document.getElementById('btnDraw').addEventListener('click', () => {
     if (drawCount >= MAX_DRAWS) return;
+    $postDrawPrompt.style.display = 'none';
     resetBox();
     setTimeout(openGift, 100);
   });
