@@ -807,6 +807,50 @@ body {
 }
 .ending-close:hover { background: rgba(255,255,255,0.1); }
 
+/* ── Blessings Wall ── */
+.blessings-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 500; display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s;
+}
+.blessings-overlay.show { opacity: 1; visibility: visible; }
+.blessings-card {
+  background: #fff; border-radius: 20px;
+  padding: 24px 20px 20px;
+  max-width: 400px; width: calc(100% - 32px);
+  max-height: 75vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  position: relative;
+  animation: endingFadeIn 0.35s ease both;
+}
+.blessings-close {
+  position: absolute; top: 8px; right: 14px;
+  background: none; border: none; font-size: 1.5rem;
+  cursor: pointer; color: #999; z-index: 5;
+}
+.blessings-close:hover { color: #333; }
+.blessings-heading {
+  font-size: 1.3rem; font-weight: 800; color: #5f27cd;
+  text-align: center; margin-bottom: 2px;
+}
+.blessings-sub {
+  font-size: 0.8rem; color: #999; text-align: center; margin-bottom: 12px;
+}
+.blessings-list {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: flex; flex-direction: column; gap: 8px;
+  padding-right: 4px;
+}
+.blessings-item {
+  background: linear-gradient(135deg, #fff9e6, #f3e5f5);
+  padding: 10px 14px; border-radius: 12px;
+  font-size: 0.9rem; color: #444; line-height: 1.5;
+  animation: fadeInUp 0.3s ease both;
+}
+.blessings-item .bless-time {
+  font-size: 0.7rem; color: #bbb; margin-top: 2px;
+}
+
 /* ── Music Toggle ── */
 .music-toggle {
   position: fixed; top: 16px; right: 16px; z-index: 200;
@@ -943,12 +987,18 @@ body {
   .draw-badge { padding: 5px 10px; font-size: 0.72rem; }
   .ending-card { max-width: 270px; padding: 20px 14px 16px; width: calc(100% - 20px); max-height: 78vh; }
   .ending-text { font-size: 0.78rem; }
+  .blessings-card { max-width: 320px; padding: 18px 14px 14px; }
+  .blessings-item { font-size: 0.82rem; padding: 8px 10px; }
   .title { font-size: clamp(1rem, 8vw, 1.4rem); }
   .subtitle { font-size: 0.72rem; }
 }
 </style>
 </head>
 <body>
+
+<!-- Hidden audio elements for story scenes -->
+<audio id="audioScene2" class="scene-audio" src="scene2.mp3" preload="auto"></audio>
+<audio id="audioScene4" class="scene-audio" src="scene4.mp3" preload="auto"></audio>
 
 <!-- ═══════════════ STORY INTRO ═══════════════ -->
 <div class="story-overlay" id="storyOverlay">
@@ -1079,6 +1129,18 @@ body {
   </div>
 </div>
 
+<!-- Blessings Wall Modal -->
+<div class="blessings-overlay" id="blessingsOverlay">
+  <div class="blessings-card" id="blessingsCard">
+    <button class="blessings-close" id="blessingsClose">&times;</button>
+    <h2 class="blessings-heading">💌 六一祝福墙</h2>
+    <p class="blessings-sub">大家写下的祝福都在这里啦～</p>
+    <div class="blessings-list" id="blessingsList">
+      <p style="color:#999;text-align:center;">还没有人送出祝福，来做第一个吧！</p>
+    </div>
+  </div>
+</div>
+
 <!-- Header -->
 <div class="header">
   <h1 class="title">🎈 六一儿童节快乐！🎈</h1>
@@ -1139,6 +1201,7 @@ body {
     <button class="btn btn-primary" id="btnDraw">🎲 抽取礼物</button>
     <button class="btn btn-secondary" id="btnReset">🔄 重新打开</button>
     <button class="btn btn-tertiary" id="btnShare">📋 分享祝福</button>
+    <button class="btn btn-secondary" id="btnBlessings">💌 祝福墙</button>
   </div>
 
   <!-- Blessing form -->
@@ -1187,6 +1250,8 @@ let currentSpeech = null;
 function stopAllAudio() {
   if (currentAudioTimer) { clearInterval(currentAudioTimer); currentAudioTimer = null; }
   if (currentSpeech) { speechSynthesis.cancel(); currentSpeech = null; }
+  // Stop any playing <audio> elements
+  document.querySelectorAll('.scene-audio').forEach(a => { a.pause(); a.currentTime = 0; });
 }
 
 function playAlarmLoop() {
@@ -1201,55 +1266,10 @@ function playAlarmLoop() {
   tick();
 }
 
-function pickVoice(preferFemale) {
-  try {
-    const voices = speechSynthesis.getVoices();
-    if (voices.length === 0) return null;
-    // Filter Chinese voices
-    const zhVoices = voices.filter(v => v.lang.startsWith('zh'));
-    if (zhVoices.length === 0) return null;
-    // Try to match gender preference
-    for (const v of zhVoices) {
-      const name = v.name.toLowerCase();
-      if (preferFemale && (name.includes('female') || name.includes('woman') || name.includes('tingting') || name.includes('yaoyao') || name.includes('xiaoxiao') || name.includes('xiao yi'))) return v;
-      if (!preferFemale && (name.includes('male') || name.includes('man'))) return v;
-    }
-    // Fallback: any Chinese voice
-    return zhVoices[0];
-  } catch(e) { return null; }
-}
-
-function speakAsync(text, preferFemale, rate, pitch, volume) {
-  // voices may load async; try immediately, retry if needed
-  function doSpeak() {
-    const voice = pickVoice(preferFemale);
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN';
-    u.rate = rate;
-    u.pitch = pitch;
-    u.volume = volume;
-    if (voice) u.voice = voice;
-    currentSpeech = u;
-    u.onend = () => { currentSpeech = null; };
-    speechSynthesis.speak(u);
-  }
-  const voices = speechSynthesis.getVoices();
-  if (voices.length === 0) {
-    // Voices not loaded yet, wait for them
-    speechSynthesis.addEventListener('voiceschanged', function onVoices() {
-      speechSynthesis.removeEventListener('voiceschanged', onVoices);
-      doSpeak();
-    });
-  } else {
-    doSpeak();
-  }
-}
-
 function playTeacherVoice() {
   stopAllAudio();
-  try {
-    speakAsync('信息组织的……期末考试重点……', true, 0.75, 1.1, 0.5);
-  } catch(e) {}
+  const audio = document.getElementById('audioScene2');
+  if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
 }
 
 function playDreamyMelody() {
@@ -1265,11 +1285,10 @@ function playShopkeeperVoice() {
   stopAllAudio();
   // Brief magical sparkle first
   [1047,1319,1568].forEach((f,i) => playNote(f,0.2,i*0.12,'sine',0.04));
-  try {
-    setTimeout(() => {
-      speakAsync('我知道你已经很多年没过六一了，但心里住着孩子的人，永远有资格收到礼物。', false, 0.78, 0.55, 0.55);
-    }, 500);
-  } catch(e) {}
+  setTimeout(() => {
+    const audio = document.getElementById('audioScene4');
+    if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
+  }, 500);
 }
 
 function startSceneAudio(sceneIdx) {
@@ -1664,6 +1683,7 @@ const MAX_DRAWS = 2;
 let $giftBoxWrapper, $giftBox, $giftResult, $giftCard, $giftIcon, $giftName, $giftBlessing;
 let $giftHint, $drawBadge1, $drawBadge2, $postDrawPrompt;
 let $historySection, $historyList, $endingOverlay, $endingClose;
+let $blessingsOverlay, $blessingsClose, $blessingsList;
 
 function cacheDom() {
   $giftBoxWrapper = document.getElementById('giftBoxWrapper');
@@ -1681,6 +1701,9 @@ function cacheDom() {
   $historyList = document.getElementById('historyList');
   $endingOverlay = document.getElementById('endingOverlay');
   $endingClose = document.getElementById('endingClose');
+  $blessingsOverlay = document.getElementById('blessingsOverlay');
+  $blessingsClose = document.getElementById('blessingsClose');
+  $blessingsList = document.getElementById('blessingsList');
 }
 
 function updateDrawBadges() {
@@ -1702,7 +1725,27 @@ function hideEnding() {
   $endingOverlay.classList.remove('show');
 }
 
-function openGift() {
+// ── Blessings Wall ──
+function showBlessings() {
+  const saved = getSavedDanmaku();
+  if (saved.length === 0) {
+    $blessingsList.innerHTML = '<p style="color:#999;text-align:center;">还没有人送出祝福，来做第一个吧！💌</p>';
+  } else {
+    $blessingsList.innerHTML = saved.map((d, i) => {
+      const text = d.replace(/^💬 /, '');
+      return '<div class="blessings-item" style="animation-delay:' + (i * 0.03) + 's">' +
+        text +
+        '<div class="bless-time">#' + (saved.length - i) + '</div>' +
+        '</div>';
+    }).join('');
+    $blessingsList.scrollTop = 0;
+  }
+  $blessingsOverlay.classList.add('show');
+}
+
+function hideBlessings() {
+  $blessingsOverlay.classList.remove('show');
+}
   if (isAnimating || drawCount >= MAX_DRAWS) return;
   isAnimating = true;
 
@@ -1828,6 +1871,13 @@ function bindEvents() {
     if (e.target === $endingOverlay) hideEnding();
   });
 
+  // Blessings wall
+  document.getElementById('btnBlessings').addEventListener('click', showBlessings);
+  $blessingsClose.addEventListener('click', hideBlessings);
+  $blessingsOverlay.addEventListener('click', (e) => {
+    if (e.target === $blessingsOverlay) hideBlessings();
+  });
+
   // Blessing form
   document.getElementById('blessingForm').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1864,6 +1914,7 @@ function bindEvents() {
     }
     if (e.key === 'Escape') {
       hideEnding();
+      hideBlessings();
     }
   });
 }
